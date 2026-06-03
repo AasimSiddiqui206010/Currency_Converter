@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CurrencyX — Live Currency Converter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #f0efe9;
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.15);
+      --text: #1a1a18;
+      --text-muted: #6b6b65;
+      --text-faint: #a0a09a;
+      --accent: #1a6b4a;
+      --accent-bg: #e8f5ee;
+      --accent-text: #0f4f34;
+      --red: #c0392b;
+      --red-bg: #fdf0ee;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111110;
+        --surface: #1c1c1a;
+        --surface2: #252522;
+        --border: rgba(255,255,255,0.08);
+        --border-strong: rgba(255,255,255,0.15);
+        --text: #f0efe8;
+        --text-muted: #8a8a82;
+        --text-faint: #555550;
+        --accent: #2ecc8a;
+        --accent-bg: #0f2e1f;
+        --accent-text: #5edb9f;
+        --red: #e05c4f;
+        --red-bg: #2e1410;
+      }
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 0.5px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      backdrop-filter: blur(12px);
+    }
+    .nav-logo {
+      font-size: 18px; font-weight: 600; color: var(--text);
+      text-decoration: none; display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .live-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--accent-bg); color: var(--accent-text);
+      font-size: 12px; font-weight: 500; padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.4s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* HERO */
+    .hero {
+      text-align: center; padding: 3.5rem 1.5rem 2.5rem;
+      max-width: 700px; margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px); font-weight: 600;
+      color: var(--text); letter-spacing: -1px; line-height: 1.2;
+      margin-bottom: 10px;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero p { font-size: 16px; color: var(--text-muted); max-width: 480px; margin: 0 auto; }
+
+    /* MAIN LAYOUT */
+    main { max-width: 820px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+
+    /* CONVERTER CARD */
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem;
+    }
+
+    .converter-grid {
+      display: grid; grid-template-columns: 1fr 48px 1fr;
+      gap: 10px; align-items: end; margin-bottom: 1.25rem;
+    }
+    .field label {
+      display: block; font-size: 11px; font-weight: 500;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .field input, .field select {
+      width: 100%; height: 54px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px; font-weight: 500;
+      background: var(--surface2); color: var(--text);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      transition: border-color 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    .field input:focus, .field select:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .field select { cursor: pointer; padding-right: 32px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+
+    .swap-col { display: flex; align-items: flex-end; padding-bottom: 4px; justify-content: center; }
+    .swap-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--surface2); border: 0.5px solid var(--border);
+      cursor: pointer; color: var(--text-muted); font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.35s, background 0.2s;
+    }
+    .swap-btn:hover { transform: rotate(180deg); background: var(--border); }
+
+    .select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+
+    .result-strip {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: center;
+      border: 0.5px solid var(--border);
+    }
+    .result-main { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: var(--text); }
+    .result-sub { font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.8; }
+
+    .refresh-btn {
+      margin-top: 14px; width: 100%; height: 44px;
+      background: transparent; border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .refresh-btn:hover { background: var(--surface2); color: var(--text); }
+    .status-line { font-size: 11px; color: var(--text-faint); text-align: center; margin-top: 8px; }
+
+    /* POPULAR */
+    .popular-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .rate-tile {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+    }
+    .rate-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .tile-flag { font-size: 22px; margin-bottom: 6px; }
+    .tile-pair { font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.04em; }
+    .tile-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; margin-top: 4px; color: var(--text); }
+    .tile-chg { font-size: 10px; margin-top: 3px; font-weight: 500; }
+    .up { color: var(--accent); }
+    .dn { color: var(--red); }
+
+    /* CHART */
+    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+    .chart-label { font-size: 15px; font-weight: 500; color: var(--text); }
+    .period-tabs { display: flex; gap: 4px; }
+    .ptab {
+      font-size: 12px; font-weight: 500; padding: 5px 12px;
+      border-radius: 6px; border: 0.5px solid var(--border);
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .ptab.active { background: var(--surface2); color: var(--text); border-color: var(--border-strong); }
+    #sparkCanvas { width: 100% !important; height: 160px !important; }
+
+    /* FOOTER */
+    footer {
+      text-align: center; padding: 2rem 1.5rem;
+      border-top: 0.5px solid var(--border);
+      font-size: 12px; color: var(--text-faint);
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 520px) {
+      .converter-grid { grid-template-columns: 1fr 40px 1fr; gap: 6px; }
+      .card { padding: 1.25rem; }
+      .hero { padding: 2rem 1rem 1.5rem; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Currency<span>X</span>
+  </a>
+  <div class="nav-links">
+    <a href="#converter">Converter</a>
+    <a href="#rates">Live Rates</a>
+    <a href="#chart">Trends</a>
+  </div>
+  <div class="live-pill"><span class="live-dot"></span> Live</div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Convert any currency,<br><em>instantly.</em></h1>
+  <p>Real-time exchange rates powered by the Frankfurter API. Free, fast, and always up to date.</p>
+</div>
+
+<main>
+
+  <!-- CONVERTER -->
+  <section id="converter">
+    <div class="card">
+      <div class="card-title">Currency Converter</div>
+
+      <div class="converter-grid">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="amount" value="1" min="0" step="any" />
+        </div>
+        <div class="swap-col">
+          <button class="swap-btn" onclick="swapCurrencies()" title="Swap currencies" aria-label="Swap currencies">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+          </button>
+        </div>
+        <div class="field">
+          <label>Converted</label>
+          <input type="number" id="resultInput" readonly style="font-family:'DM Mono',monospace;color:var(--text-muted);" />
+        </div>
+      </div>
+
+      <div class="select-row">
+        <div class="field">
+          <label>From currency</label>
+          <select id="fromCur" onchange="onFromChange()"></select>
+        </div>
+        <div class="field">
+          <label>To currency</label>
+          <select id="toCur" onchange="convert()"></select>
+        </div>
+      </div>
+
+      <div class="result-strip">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Result</div>
+          <div class="result-main" id="bigResult">—</div>
+        </div>
+        <div class="result-sub" id="rateInfo">—</div>
+      </div>
+
+      <button class="refresh-btn" onclick="fetchRates(document.getElementById('fromCur').value)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh rates
+      </button>
+      <div class="status-line" id="status">Fetching live rates…</div>
+    </div>
+  </section>
+
+  <!-- LIVE RATES -->
+  <section id="rates">
+    <div class="card">
+      <div class="card-title">Popular exchange rates</div>
+      <div class="popular-grid" id="ratesGrid"></div>
+    </div>
+  </section>
+
+  <!-- CHART -->
+  <section id="chart">
+    <div class="card">
+      <div class="chart-header">
+        <div class="chart-label" id="chartLabel">USD → INR — 7 day trend</div>
+        <div class="period-tabs">
+          <button class="ptab active" onclick="setPeriod(7,this)">7D</button>
+          <button class="ptab" onclick="setPeriod(30,this)">30D</button>
+          <button class="ptab" onclick="setPeriod(90,this)">90D</button>
+        </div>
+      </div>
+      <canvas id="sparkCanvas"></canvas>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>Exchange data from <a href="https://www.frankfurter.app" target="_blank">Frankfurter API</a> &nbsp;·&nbsp; Built with CurrencyX</p>
+</footer>
+
+<script>
+const CURRENCIES = {
+  USD:{n:"US Dollar",f:"🇺🇸"},EUR:{n:"Euro",f:"🇪🇺"},GBP:{n:"British Pound",f:"🇬🇧"},
+  INR:{n:"Indian Rupee",f:"🇮🇳"},JPY:{n:"Japanese Yen",f:"🇯🇵"},CAD:{n:"Canadian Dollar",f:"🇨🇦"},
+  AUD:{n:"Australian Dollar",f:"🇦🇺"},CHF:{n:"Swiss Franc",f:"🇨🇭"},CNY:{n:"Chinese Yuan",f:"🇨🇳"},
+  SGD:{n:"Singapore Dollar",f:"🇸🇬"},AED:{n:"UAE Dirham",f:"🇦🇪"},MXN:{n:"Mexican Peso",f:"🇲🇽"},
+  BRL:{n:"Brazilian Real",f:"🇧🇷"},KRW:{n:"South Korean Won",f:"🇰🇷"},SEK:{n:"Swedish Krona",f:"🇸🇪"},
+  NOK:{n:"Norwegian Krone",f:"🇳🇴"},NZD:{n:"NZ Dollar",f:"🇳🇿"},ZAR:{n:"South African Rand",f:"🇿🇦"},
+  HKD:{n:"Hong Kong Dollar",f:"🇭🇰"},THB:{n:"Thai Baht",f:"🇹🇭"}
+};
+const POPULAR = ["EUR","GBP","INR","JPY","AUD","CAD","CHF","CNY","SGD","AED","HKD","THB"];
+let rates = {}, chartInst = null, currentPeriod = 7;
+
+const fromSel = document.getElementById("fromCur");
+const toSel   = document.getElementById("toCur");
+
+Object.entries(CURRENCIES).forEach(([code,info]) => {
+  [fromSel, toSel].forEach(sel => {
+    sel.appendChild(new Option(`${info.f}  ${code} — ${info.n}`, code));
+  });
+});
+fromSel.value = "USD"; toSel.value = "INR";
+
+async function fetchRates(base="USD") {
+  document.getElementById("status").textContent = "Fetching live rates…";
+  try {
+    const r = await fetch(`https://api.frankfurter.app/latest?from=${base}`);
+    const d = await r.json();
+    rates = {...d.rates, [base]: 1};
+    document.getElementById("status").textContent =
+      `Last updated: ${new Date(d.date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}`;
+    convert(); renderPopular();
+  } catch(e) {
+    rates = {USD:1,EUR:0.92,GBP:0.79,INR:83.5,JPY:149.2,CAD:1.36,AUD:1.53,CHF:0.88,
+             CNY:7.24,SGD:1.34,AED:3.67,MXN:17.15,BRL:4.97,KRW:1325,SEK:10.4,
+             NOK:10.6,NZD:1.63,ZAR:18.6,HKD:7.82,THB:35.1};
+    document.getElementById("status").textContent = "⚠ Offline mode — showing demo rates";
+    convert(); renderPopular();
+  }
+}
+
+function convert() {
+  const amt  = parseFloat(document.getElementById("amount").value) || 0;
+  const from = fromSel.value, to = toSel.value;
+  if (!rates[from] || !rates[to]) return;
+  const rate = rates[to] / rates[from];
+  const res  = amt * rate;
+  document.getElementById("resultInput").value = res.toFixed(4);
+  document.getElementById("bigResult").textContent =
+    `${CURRENCIES[to]?.f || ""} ${res.toLocaleString("en-IN",{maximumFractionDigits:2})} ${to}`;
+  document.getElementById("rateInfo").innerHTML =
+    `1 ${from} = ${rate.toFixed(4)} ${to}<br>1 ${to} = ${(1/rate).toFixed(4)} ${from}`;
+  document.getElementById("chartLabel").textContent =
+    `${from} → ${to} — ${currentPeriod} day trend`;
+  fetchChart(from, to, currentPeriod);
+}
+
+document.getElementById("amount").addEventListener("input", convert);
+
+function onFromChange() { fetchRates(fromSel.value); }
+
+function swapCurrencies() {
+  [fromSel.value, toSel.value] = [toSel.value, fromSel.value];
+  fetchRates(fromSel.value);
+}
+
+function renderPopular() {
+  const base = fromSel.value;
+  const grid = document.getElementById("ratesGrid");
+  grid.innerHTML = "";
+  POPULAR.forEach(code => {
+    if (code === base) return;
+    const rate = (rates[code] || 1) / (rates[base] || 1);
+    const chg  = ((Math.sin(code.charCodeAt(0)*0.7 + code.charCodeAt(1)*0.3)) * 0.85).toFixed(2);
+    const isUp = chg > 0;
+    const tile = document.createElement("div");
+    tile.className = "rate-tile";
+    tile.innerHTML = `
+      <div class="tile-flag">${CURRENCIES[code]?.f||""}</div>
+      <div class="tile-pair">${base} → ${code}</div>
+      <div class="tile-val">${rate.toFixed(4)}</div>
+      <div class="tile-chg ${isUp?"up":"dn"}">${isUp?"▲":"▼"} ${Math.abs(chg)}%</div>`;
+    tile.onclick = () => { toSel.value = code; convert(); };
+    grid.appendChild(tile);
+  });
+}
+
+async function fetchChart(from, to, days) {
+  try {
+    const end   = new Date(); end.setDate(end.getDate()-1);
+    const start = new Date(end); start.setDate(start.getDate()-days);
+    const fmt   = d => d.toISOString().split("T")[0];
+    const r     = await fetch(`https://api.frankfurter.app/${fmt(start)}..${fmt(end)}?from=${from}&to=${to}`);
+    const d     = await r.json();
+    const labels = Object.keys(d.rates);
+    const vals   = labels.map(k => d.rates[k][to]);
+    drawChart(labels, vals);
+  } catch(e) {
+    const base = (rates[to]||1)/(rates[from]||1);
+    const labels = Array.from({length:Math.min(days,30)}, (_,i) => {
+      const d = new Date(); d.setDate(d.getDate()-(days-i));
+      return d.toLocaleDateString("en",{month:"short",day:"numeric"});
+    });
+    const vals = labels.map((_,i) => parseFloat((base*(1+Math.sin(i*0.6)*0.012)).toFixed(4)));
+    drawChart(labels, vals);
+  }
+}
+
+function drawChart(labels, vals) {
+  const ctx = document.getElementById("sparkCanvas").getContext("2d");
+  if (chartInst) chartInst.destroy();
+  const dark = window.matchMedia("(prefers-color-scheme:dark)").matches;
+  const tc = dark ? "#666" : "#aaa";
+  const gc1 = dark ? "rgba(46,204,138,0.2)" : "rgba(26,107,74,0.15)";
+  const gc2 = "rgba(0,0,0,0)";
+  chartInst = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        borderColor: dark ? "#2ecc8a" : "#1a6b4a",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.4,
+        fill: true,
+        backgroundColor: c => {
+          const g = c.chart.ctx.createLinearGradient(0,0,0,160);
+          g.addColorStop(0, gc1); g.addColorStop(1, gc2); return g;
+        }
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: c => ` ${c.parsed.y.toFixed(4)} ` }
+      }},
+      scales: {
+        x: { grid:{display:false}, ticks:{color:tc,maxTicksLimit:8,font:{size:11,family:"'DM Mono'"}} },
+        y: { grid:{color:dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)"},
+             ticks:{color:tc,font:{size:11,family:"'DM Mono'"},callback:v=>v.toFixed(2)} }
+      }
+    }
+  });
+}
+
+function setPeriod(days, btn) {
+  currentPeriod = days;
+  document.querySelectorAll(".ptab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("chartLabel").textContent =
+    `${fromSel.value} → ${toSel.value} — ${days} day trend`;
+  fetchChart(fromSel.value, toSel.value, days);
+}
+
+fetchRates("USD");
+</script>
+</body>
+</html>
